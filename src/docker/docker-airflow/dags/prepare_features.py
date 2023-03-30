@@ -27,13 +27,13 @@ def load_and_process_data():
     cab = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
         .option("password", "postgres") \
-        .option("query", f"select * from cab_rides").load()
+        .option("query", "select * from cab_rides").load()
     cab = cab.filter(cab['time_stamp'] > last_date) \
         .filter(cab['time_stamp'] <= current_date)
     weather = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
         .option("password", "postgres") \
-        .option("query", f"select * from weather").load()
+        .option("query", "select * from weather").load()
     weather = weather.filter(weather['time_stamp'] > last_date) \
         .filter(weather['time_stamp'] <= current_date)
     Variable.set('last_date', current_date)

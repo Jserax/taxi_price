@@ -90,32 +90,24 @@ def eval_model():
     model_name = mlflow_config['model_name']
     client = MlflowClient(mlflow_config["remote_server_uri"])
     latest_model_version = client.get_latest_versions(model_name)[-1].version
-    try:
-        current_prod_model = mlflow.sklearn.load_model(f"models:/{model_name}/production")
-        latest_model = mlflow.sklearn.load_model(f"models:/{model_name}/{latest_model_version}")
-        test_path = Variable.get('last_test_set', r'data\processed\test.csv')
-        test = pd.read_csv(test_path, index_col=0)
-        x_test, y_test = test.drop(columns=[target]), test[target]
-        y_pred_prod = current_prod_model.predict(x_test)
-        r2_score_prod = r2_score(y_test, y_pred_prod)
-        y_pred_latest = latest_model.predict(x_test)
-        r2_score_latest = r2_score(y_test, y_pred_latest)
-        test_result = ttest_ind(r2_score_prod,
-                                r2_score_latest,
-                                alternative="less")
-        if test_result.pvalue < 0.05:
-            client.transition_model_version_stage(
-                name=model_name,
-                version=latest_model_version,
-                stage="Production",
-                archive_existing_versions=True)
-    except:
+    current_prod_model = mlflow.sklearn.load_model(f"models:/{model_name}/production")
+    latest_model = mlflow.sklearn.load_model(f"models:/{model_name}/{latest_model_version}")
+    test_path = Variable.get('last_test_set', r'data\processed\test.csv')
+    test = pd.read_csv(test_path, index_col=0)
+    x_test, y_test = test.drop(columns=[target]), test[target]
+    y_pred_prod = current_prod_model.predict(x_test)
+    r2_score_prod = r2_score(y_test, y_pred_prod)
+    y_pred_latest = latest_model.predict(x_test)
+    r2_score_latest = r2_score(y_test, y_pred_latest)
+    test_result = ttest_ind(r2_score_prod,
+                            r2_score_latest,
+                            alternative="less")
+    if test_result.pvalue < 0.05:
         client.transition_model_version_stage(
-                name=model_name,
-                version=latest_model_version,
-                stage="Production",
-                archive_existing_versions=True)
-            
+            name=model_name,
+            version=latest_model_version,
+            stage="Production",
+            archive_existing_versions=True)          
 
 
 with DAG(dag_id='train_model',
