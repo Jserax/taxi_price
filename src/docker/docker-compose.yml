@@ -1,7 +1,7 @@
 version: '3.8'
 services:  
 
-    postgres:
+    postgresql:
         restart: always
         image: postgres:13
         container_name: postgres
@@ -12,34 +12,45 @@ services:
         ports:
             - "5434:5432" 
         volumes:
-            - postgres_data:/var/lib/postgresql/data       
+            - postgres_data:/var/lib/postgresql/data
+        networks:
+            - postgres       
 
 
     mlflow:
         image: mlflow:1.0.0
         build: ./docker-mlflow
-        container_name: mlflow    
+        container_name: mlflow_server
         ports:
             - "5000:5000"
+        command: mlflow server --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
         volumes:
             - "./docker-mlflow/mlartifacts:/mlartifacts"
+        networks:
+            - postgres 
         depends_on:
-            - postgres
-
-
-    # airflow:
-    #     image: airflow:1.0.0
-    #     build: ./docker-airflow
-    #     container_name: airflow
-    #     ports:
-    #         - '8080:8080'
-    #     volumes:
-    #         - "./docker-airflow/dags:/airflow/dags"            
-    #     depends_on:
-    #         - postgres  
+            - postgresql
 
 
 
+    airflow:
+        image: airflow:1.0.0
+        build: ./docker-airflow
+        container_name: airflow
+        ports:
+            - '8080:8080'
+        expose:
+            - '8793'
+        volumes:
+            - "./docker-airflow/dags:/airflow/dags" 
+        command: bash -c "airflow db init && airflow users create -u admin -f admin -l admin -r Admin -e admin@admim.org && airflow webserver -D && airflow sheduler -D"           
+        depends_on:
+            - postgres  
+
+
+networks:
+  postgres:
+    driver: bridge
 volumes:
     postgres_data:  
     

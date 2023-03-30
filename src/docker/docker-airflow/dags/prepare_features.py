@@ -24,16 +24,14 @@ def load_and_process_data():
     print(current_date)
     if last_date is None:
         last_date = (dt.datetime.now()-dt.timedelta(days=100)).timestamp()
-    cab = spark.read.format("jdbc").option("url", "jdbc:postgresql://localhost:5434/postgres") \
+    cab = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
-        .option("password", "Gignmpw01!") \
-        .option("query", f"select * from cab_rides where (time_stamp >= {last_date}) \
-                and (time_stamp < {current_date})").load()
-    weather = spark.read.format("jdbc").option("url", "jdbc:postgresql://localhost:5434/postgres") \
+        .option("password", "postgres") \
+        .option("query", f"select * from cab_rides where (time_stamp >= {last_date}) and (time_stamp < {current_date})").load()
+    weather = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
-        .option("password", "Gignmpw01!") \
-        .option("query", f"select * from weather where (time_stamp >= {last_date}) \
-                and (time_stamp < {current_date})").load()
+        .option("password", "postgres") \
+        .option("query", f"select * from weather where (time_stamp >= {last_date}) and (time_stamp < {current_date})").load()
     Variable.set('last_date', current_date)
     mapping = {1: 6, 7: 5, 6: 4, 5: 3, 4: 2, 3: 1, 2: 0}
     cab = cab.withColumn("datetime", cab["time_stamp"].cast("timestamp"))
