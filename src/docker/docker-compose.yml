@@ -1,0 +1,45 @@
+version: '3.8'
+services:  
+
+    postgres:
+        restart: always
+        image: postgres:13
+        container_name: postgres
+        environment:
+            - POSTGRES_DB=postgres
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+        ports:
+            - "5434:5432" 
+        volumes:
+            - postgres_data:/var/lib/postgresql/data       
+
+
+    mlflow:
+        image: mlflow:1.0.0
+        build: ./docker-mlflow
+        container_name: mlflow    
+        ports:
+            - "5000:5000"
+        volumes:
+            - "./docker-mlflow/mlartifacts:/mlartifacts"
+        depends_on:
+            - postgres
+
+
+    # airflow:
+    #     image: airflow:1.0.0
+    #     build: ./docker-airflow
+    #     container_name: airflow
+    #     ports:
+    #         - '8080:8080'
+    #     volumes:
+    #         - "./docker-airflow/dags:/airflow/dags"            
+    #     depends_on:
+    #         - postgres  
+
+
+
+volumes:
+    postgres_data:  
+    

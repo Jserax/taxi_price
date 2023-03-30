@@ -1,0 +1,26 @@
+data: 
+  cat_cols: 
+  - destination
+  - source
+  - cab_type
+  - name
+  num_cols:
+  - distance
+  - avg(temp)
+  - avg(clouds)
+  - avg(pressure)
+  - avg(rain)
+  - avg(humidity)
+  - dow_cos 
+  - dow_sin
+  - hour_cos 
+  - hour_sin
+  target: price
+mlflow:
+  artifacts_dir: artifacts
+  experiment_name: taxi_price
+  model_name: taxi_price_model
+  remote_server_uri: http://mlflow:5000
+  run_name: lr_model
+
+  
