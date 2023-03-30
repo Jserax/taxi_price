@@ -43,7 +43,7 @@ def objective(trial, x_train, y_train, num_cols):
 
 
 def train_model():
-    config = read_params()
+    config = read_params("/root/airflow/dags/params.yaml")
     data_config = config['data']
     mlflow_config = config['mlflow']
     num_cols = data_config['num_cols']
@@ -84,7 +84,7 @@ def train_model():
 
 
 def eval_model():
-    config = read_params("src/params.yaml")
+    config = read_params("/root/airflow/dags/params.yaml")
     mlflow_config = config['mlflow']     
     target = config['data']['target']     
     model_name = mlflow_config['model_name']

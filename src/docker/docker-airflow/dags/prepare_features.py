@@ -27,11 +27,15 @@ def load_and_process_data():
     cab = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
         .option("password", "postgres") \
-        .option("query", f"select * from cab_rides where (time_stamp >= {last_date}) and (time_stamp < {current_date})").load()
+        .option("query", f"select * from cab_rides").load()
+    cab = cab.filter(cab['time_stamp'] > last_date) \
+        .filter(cab['time_stamp'] <= current_date)
     weather = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
         .option("password", "postgres") \
-        .option("query", f"select * from weather where (time_stamp >= {last_date}) and (time_stamp < {current_date})").load()
+        .option("query", f"select * from weather").load()
+    weather = weather.filter(weather['time_stamp'] > last_date) \
+        .filter(weather['time_stamp'] <= current_date)
     Variable.set('last_date', current_date)
     mapping = {1: 6, 7: 5, 6: 4, 5: 3, 4: 2, 3: 1, 2: 0}
     cab = cab.withColumn("datetime", cab["time_stamp"].cast("timestamp"))
@@ -58,8 +62,8 @@ def load_and_process_data():
                             'avg(rain)', 'avg(humidity)', 'price'])
     splits = cab.randomSplit([0.8, 0.2])
     date = dt.datetime.now().date()
-    train_set = f'data/processed/train_{date}.csv'
-    test_set = f'data/processed/test_{date}.csv'
+    train_set = f'root/data/processed/train_{date}.csv'
+    test_set = f'root/data/processed/test_{date}.csv'
     Variable.set('last_train_set', train_set)
     Variable.set('last_test_set', test_set)
     splits[0].toPandas().to_csv(train_set)
@@ -72,7 +76,7 @@ with DAG(dag_id='prepare_data',
          default_args={
             "depends_on_past": False,
             "retries": 1},
-         schedule_interval="@hourly",
+         schedule_interval="None",
          catchup=False,
          tags=["critical", "data"]) as dag:
 

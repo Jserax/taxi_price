@@ -41,11 +41,13 @@ services:
             - '8080:8080'
         expose:
             - '8793'
+        networks:
+            - postgres
         volumes:
             - "./docker-airflow/dags:/airflow/dags" 
         command: bash -c "airflow db init && airflow users create -u admin -f admin -l admin -r Admin -e admin@admim.org && airflow webserver -D && airflow sheduler -D"           
         depends_on:
-            - postgres  
+            - postgresql  
 
 
 networks:
