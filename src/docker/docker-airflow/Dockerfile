@@ -15,7 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /root/data/processed/
 RUN mkdir -p /root/airflow/dags/
 RUN mkdir mlartifacts
-COPY /dags /root/airflow/dags/
 RUN mkdir dockers
 WORKDIR dockers
 RUN curl https://download.docker.com/linux/ubuntu/dists/focal/pool/stable/amd64/containerd.io_1.6.20-1_amd64.deb --output containerd.deb

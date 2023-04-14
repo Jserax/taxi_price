@@ -51,6 +51,7 @@ services:
             - postgres
         environment:
             - TZ=Europe/Moscow
+            - AIRFLOW__CORE__LOAD_EXAMPLES=False      
         volumes:
             - "/docker-airflow/dags:/airflow/dags" 
             - "/docker-mlflow/mlartifacts:/mlartifacts"
