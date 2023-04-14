@@ -19,7 +19,7 @@ from mlflow.exceptions import RestException
 from airflow.models import Variable
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
-from airflow.operators import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 
@@ -115,7 +115,7 @@ def eval_model():
                 version=latest_ver,
                 stage="Production",
                 archive_existing_versions=True)
-            return 'build_model_image'
+            return 'buil_model_task'
         else:
             return 'end_task'
     except RestException:
@@ -124,7 +124,7 @@ def eval_model():
             version=latest_ver,
             stage="Production",
             archive_existing_versions=True)
-        return 'build_model_image'
+        return 'buil_model_task'
 
 with DAG(dag_id='train_model',
          start_date=dt.datetime(2000, 1, 1),
@@ -136,10 +136,10 @@ with DAG(dag_id='train_model',
          catchup=False,
          tags=["critical", "train"]) as dag:
 
-    start_dag = DummyOperator(
+    start_dag = EmptyOperator(
         task_id='start_dag')
 
-    end_dag = DummyOperator(
+    end_dag = EmptyOperator(
         task_id='end_dag')
 
     train_model_task = PythonOperator(
@@ -150,7 +150,7 @@ with DAG(dag_id='train_model',
 
     build_model_task = BashOperator(
         bash_command="mlflow models build-docker --model-uri models:/taxi_price_model/production --name mlflow_serve",
-        task_id='buil_model')
+        task_id='buil_model_task')
 
     run_container_task = DockerOperator(
         task_id='run_model',

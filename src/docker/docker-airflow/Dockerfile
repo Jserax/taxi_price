@@ -2,7 +2,7 @@ FROM python:3.8-slim
 COPY requirements.txt requirements.txt
 RUN apt-get update \
   && apt-get install -y \
-         openjdk-11-jre curl\
+         openjdk-11-jre curl iptables libdevmapper-dev\
   && apt-get autoremove -yqq --purge \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*

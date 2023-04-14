@@ -15,6 +15,12 @@ services:
             - postgres_data:/var/lib/postgresql/data
         networks:
             - postgres       
+	    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 
     mlflow:
@@ -23,7 +29,7 @@ services:
         container_name: mlflow_server
         ports:
             - "5000:5000"
-        command: mlflow server --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
+        command: mlflow server -w 1 --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
         volumes:
             - "./docker-mlflow/mlartifacts:/mlartifacts"
         networks:

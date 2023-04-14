@@ -10,6 +10,7 @@ import datetime as dt
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from numpy import pi
+from airflow.operators.empty import EmptyOperator
 
 
 spark_jars = '/usr/local/lib/python3.8/site-packages/pyspark/jars/postgresql-42.6.0.jar'
@@ -79,10 +80,10 @@ with DAG(dag_id='prepare_data',
          catchup=False,
          tags=["critical", "data"]) as dag:
 
-    start_dag = DummyOperator(
+    start_dag = EmptyOperator(
         task_id='start_dag')
 
-    end_dag = DummyOperator(
+    end_dag = EmptyOperator(
         task_id='end_dag')
 
     process_raw_data_task = PythonOperator(
