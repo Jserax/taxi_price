@@ -4,3 +4,5 @@ optuna
 mlflow
 scipy
 pandas
+apache-airflow-providers-apache-spark
+apache-airflow-providers-docker

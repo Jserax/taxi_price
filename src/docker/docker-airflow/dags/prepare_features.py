@@ -5,7 +5,6 @@ from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.python import PythonOperator
 
-
 import datetime as dt
 
 from pyspark.sql import SparkSession
@@ -23,7 +22,7 @@ def load_and_process_data():
     current_date = dt.datetime.now().timestamp()
     print(current_date)
     if last_date is None:
-        last_date = (dt.datetime.now()-dt.timedelta(days=100)).timestamp()
+        last_date = dt.datetime(2000,1,1).timestamp()
     cab = spark.read.format("jdbc").option("url", "jdbc:postgresql://postgresql/postgres") \
         .option("driver", "org.postgresql.Driver").option("user", "postgres") \
         .option("password", "postgres") \
@@ -80,10 +79,16 @@ with DAG(dag_id='prepare_data',
          catchup=False,
          tags=["critical", "data"]) as dag:
 
+    start_dag = DummyOperator(
+        task_id='start_dag')
+
+    end_dag = DummyOperator(
+        task_id='end_dag')
+
     process_raw_data_task = PythonOperator(
         python_callable=load_and_process_data, task_id="load_and_process_data")
 
     run_training_dag = TriggerDagRunOperator(
         task_id="run_model_train", trigger_dag_id="train_model")
 
-    process_raw_data_task >> run_training_dag
+    start_dag >> process_raw_data_task >> run_training_dag >> end_dag

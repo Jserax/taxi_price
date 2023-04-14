@@ -1,24 +1,27 @@
 import datetime as dt
 import pandas as pd
 import optuna
-from utils import CosSinTransformer, read_params
+from utils import CosSinTransformer, read_params, bootstrap_metrics
 from scipy.stats import ttest_ind
 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
 
 import mlflow
 from mlflow.client import MlflowClient
 from mlflow.models.signature import infer_signature
+from mlflow.exceptions import RestException
 
 from airflow.models import Variable
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.operators import DummyOperator
+from airflow.operators.bash import BashOperator
+from airflow.providers.docker.operators.docker import DockerOperator
 
 def objective(trial, x_train, y_train, num_cols):
     alpha = trial.suggest_float("alpha", 1e-4, 100, log=True)
@@ -38,7 +41,8 @@ def objective(trial, x_train, y_train, num_cols):
                            ('ct', ct),
                            ('regressor', regressor)])
 
-    mse = cross_val_score(pipe, x_train, y_train, cv=5, scoring='neg_mean_squared_error').mean()
+    mse = cross_val_score(pipe, x_train, y_train, cv=5,
+                          scoring='neg_mean_squared_error').mean()
     return mse
 
 
@@ -78,37 +82,49 @@ def train_model():
         mlflow.log_metric('r2_score', metrics[0])
         mlflow.log_metric('mse', metrics[1])
         signature = infer_signature(x_test, y_pred)
+        input_example = x_train.iloc[[1]]
         mlflow.sklearn.log_model(pipe, "regression",
                                  registered_model_name=mlflow_config['model_name'],
-                                 signature=signature)
+                                 signature=signature,
+                                 input_example=input_example)
 
 
 def eval_model():
     config = read_params("/root/airflow/dags/params.yaml")
-    mlflow_config = config['mlflow']     
-    target = config['data']['target']     
+    mlflow_config = config['mlflow']
+    target = config['data']['target']
     model_name = mlflow_config['model_name']
     client = MlflowClient(mlflow_config["remote_server_uri"])
-    latest_model_version = client.get_latest_versions(model_name)[-1].version
-    current_prod_model = mlflow.sklearn.load_model(f"models:/{model_name}/production")
-    latest_model = mlflow.sklearn.load_model(f"models:/{model_name}/{latest_model_version}")
-    test_path = Variable.get('last_test_set', r'data\processed\test.csv')
-    test = pd.read_csv(test_path, index_col=0)
-    x_test, y_test = test.drop(columns=[target]), test[target]
-    y_pred_prod = current_prod_model.predict(x_test)
-    r2_score_prod = r2_score(y_test, y_pred_prod)
-    y_pred_latest = latest_model.predict(x_test)
-    r2_score_latest = r2_score(y_test, y_pred_latest)
-    test_result = ttest_ind(r2_score_prod,
-                            r2_score_latest,
-                            alternative="less")
-    if test_result.pvalue < 0.05:
+    try:
+        latest_ver = client.get_latest_versions(model_name)[-1].version
+        current_model = mlflow.sklearn.load_model(f"models:/{model_name}/production")
+        latest_model = mlflow.sklearn.load_model(f"models:/{model_name}/{latest_ver}")
+        test_path = Variable.get('last_test_set', r'data\processed\test.csv')
+        test = pd.read_csv(test_path, index_col=0)
+        x_test, y_test = test.drop(columns=[target]), test[target]
+        y_pred_prod = current_model.predict(x_test)
+        mse_score_prod = bootstrap_metrics(y_test, y_pred_prod)
+        y_pred_latest = latest_model.predict(x_test)
+        mse_score_latest = bootstrap_metrics(y_test, y_pred_latest)
+        test_result = ttest_ind(mse_score_prod,
+                                mse_score_latest,
+                                alternative="less")
+        if test_result.pvalue < 0.05:
+            client.transition_model_version_stage(
+                name=model_name,
+                version=latest_ver,
+                stage="Production",
+                archive_existing_versions=True)
+            return 'build_model_image'
+        else:
+            return 'end_task'
+    except RestException:
         client.transition_model_version_stage(
             name=model_name,
-            version=latest_model_version,
+            version=latest_ver,
             stage="Production",
-            archive_existing_versions=True)          
-
+            archive_existing_versions=True)
+        return 'build_model_image'
 
 with DAG(dag_id='train_model',
          start_date=dt.datetime(2000, 1, 1),
@@ -116,14 +132,31 @@ with DAG(dag_id='train_model',
          default_args={
             "depends_on_past": False,
             "retries": 1},
-         schedule_interval="@hourly",
+         schedule_interval="@once",
          catchup=False,
          tags=["critical", "train"]) as dag:
+
+    start_dag = DummyOperator(
+        task_id='start_dag')
+
+    end_dag = DummyOperator(
+        task_id='end_dag')
 
     train_model_task = PythonOperator(
         python_callable=train_model, task_id="train_model")
 
-    eval_model_task = PythonOperator(
+    eval_model_task = BranchPythonOperator(
         python_callable=eval_model, task_id="eval_model")
 
-    train_model_task >> eval_model_task
+    build_model_task = BashOperator(
+        bash_command="mlflow models build-docker --model-uri models:/taxi_price_model/production --name mlflow_serve",
+        task_id='buil_model')
+
+    run_container_task = DockerOperator(
+        task_id='run_model',
+        image='mlflow_serve',
+        container_name='mlflow_serve')
+
+    start_dag >> train_model_task >> eval_model_task >> [build_model_task, end_dag]
+
+    build_model_task >> run_container_task >> end_dag

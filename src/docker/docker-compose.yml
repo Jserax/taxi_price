@@ -38,17 +38,39 @@ services:
         build: ./docker-airflow
         container_name: airflow
         ports:
-            - '8080:8080'
+            - '8088:8080'
         expose:
             - '8793'
         networks:
             - postgres
+        environment:
+            - TZ=Europe/Moscow
         volumes:
-            - "./docker-airflow/dags:/airflow/dags" 
-        command: tail -F           
+            - "/docker-airflow/dags:/airflow/dags" 
+            - "/docker-mlflow/mlartifacts:/mlartifacts"
+            - "/var/run/docker.sock:/var/run/docker.sock"
+        command: 
+            - /bin/bash
+            - -c
+            - |
+              airflow db init
+              airflow users create -r Admin -u admin -f admin -l admin -e admin@airflow.org -p admin
+              airflow scheduler -D &
+              airflow webserver -w 1 
         depends_on:
             - postgresql  
-
+        
+    db_init:
+        image: db_init
+        build: ./db-init
+        container_name: db-init
+        command: python3 main.py
+        environment:
+            - TABLE_DAY=value
+        networks:
+            - postgres 
+        depends_on:
+            - postgresql
 
 networks:
   postgres:
