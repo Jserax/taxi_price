@@ -117,7 +117,7 @@ def eval_model():
                 archive_existing_versions=True)
             return 'buil_model_task'
         else:
-            return 'end_task'
+            return 'end_dag'
     except RestException:
         client.transition_model_version_stage(
             name=model_name,
