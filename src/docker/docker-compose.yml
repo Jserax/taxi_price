@@ -15,33 +15,25 @@ services:
             - postgres_data:/var/lib/postgresql/data
         networks:
             - postgres       
-	healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-            start_period: 15s
+
 
 
     mlflow:
-        image: mlflow:1.0.0
-        build: ./docker-mlflow
-        container_name: mlflow_server
+        image: skyraxer/mlflow:latest
+        container_name: mlflow
         ports:
             - "5000:5000"
         command: mlflow server -w 1 --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
         volumes:
-            - "./docker-mlflow/mlartifacts:/mlartifacts"
+            - "/root/taxi_price/src/docker/docker-mlflow/mlartifacts:/root/mlartifacts"
         networks:
             - postgres 
         depends_on:
             - postgresql
 
 
-
     airflow:
-        image: airflow:1.0.0
-        build: ./docker-airflow
+        image: skyraxer/airflow:latest
         container_name: airflow
         ports:
             - '8088:8080'
@@ -53,8 +45,8 @@ services:
             - TZ=Europe/Moscow
             - AIRFLOW__CORE__LOAD_EXAMPLES=False      
         volumes:
-            - "/docker-airflow/dags:/airflow/dags" 
-            - "/docker-mlflow/mlartifacts:/mlartifacts"
+            - "/root/taxi_price/src/docker/docker-airflow/dags:/root/airflow/dags" 
+            - "/root/taxi_price/src/docker/docker-mlflow/mlartifacts:/root/mlartifacts"
             - "/var/run/docker.sock:/var/run/docker.sock"
         command: 
             - /bin/bash
@@ -68,8 +60,7 @@ services:
             - postgresql  
         
     db_init:
-        image: db_init
-        build: ./db-init
+        image: skyraxer/db_init:latest
         container_name: db-init
         command: python3 main.py
         environment:

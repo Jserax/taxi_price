@@ -62,8 +62,8 @@ def load_and_process_data():
                             'avg(rain)', 'avg(humidity)', 'price'])
     splits = cab.randomSplit([0.8, 0.2])
     date = dt.datetime.now().date()
-    train_set = f'root/data/processed/train_{date}.csv'
-    test_set = f'root/data/processed/test_{date}.csv'
+    train_set = f'/root/data/processed/train_{date}.csv'
+    test_set = f'/root/data/processed/test_{date}.csv'
     Variable.set('last_train_set', train_set)
     Variable.set('last_test_set', test_set)
     splits[0].toPandas().to_csv(train_set)

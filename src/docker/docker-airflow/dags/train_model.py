@@ -115,16 +115,16 @@ def eval_model():
                 version=latest_ver,
                 stage="Production",
                 archive_existing_versions=True)
-            return 'buil_model_task'
+            return 'build_model_task'
         else:
             return 'end_dag'
     except RestException:
         client.transition_model_version_stage(
             name=model_name,
-            version=latest_ver,
+            version=1,
             stage="Production",
             archive_existing_versions=True)
-        return 'buil_model_task'
+        return 'build_model_task'
 
 with DAG(dag_id='train_model',
          start_date=dt.datetime(2000, 1, 1),
@@ -150,7 +150,7 @@ with DAG(dag_id='train_model',
 
     build_model_task = BashOperator(
         bash_command="mlflow models build-docker --model-uri models:/taxi_price_model/production --name mlflow_serve",
-        task_id='buil_model_task')
+        task_id='build_model_task')
 
     run_container_task = DockerOperator(
         task_id='run_model',
