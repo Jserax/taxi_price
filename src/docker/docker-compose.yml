@@ -24,8 +24,6 @@ services:
         ports:
             - "5000:5000"
         command: mlflow server -w 1 --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
-        volumes:
-            - "/root/taxi_price/src/docker/docker-mlflow/mlartifacts:/root/mlartifacts"
         networks:
             - postgres 
         depends_on:
@@ -46,7 +44,6 @@ services:
             - AIRFLOW__CORE__LOAD_EXAMPLES=False      
         volumes:
             - "/root/taxi_price/src/docker/docker-airflow/dags:/root/airflow/dags" 
-            - "/root/taxi_price/src/docker/docker-mlflow/mlartifacts:/root/mlartifacts"
             - "/var/run/docker.sock:/var/run/docker.sock"
         command: 
             - /bin/bash

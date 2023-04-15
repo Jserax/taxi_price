@@ -1,7 +1,7 @@
 import datetime as dt
 import pandas as pd
 import optuna
-from utils import CosSinTransformer, read_params, bootstrap_metrics
+from utils import read_params, bootstrap_metrics
 from scipy.stats import ttest_ind
 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import cross_val_score
+from sklearn.base import BaseEstimator, TransformerMixin
 
 import mlflow
 from mlflow.client import MlflowClient
@@ -22,6 +23,22 @@ from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 from airflow.providers.docker.operators.docker import DockerOperator
+
+
+class CosSinTransformer(BaseEstimator, TransformerMixin):
+
+    def fit(self, X, y=None):
+        return self
+
+    def set_output(self, transform=None):
+        pass
+
+    def transform(self, X, y=None):
+        X['dow_cos'] = np.cos(2*np.pi*X['dayofweek']/6)
+        X['dow_sin'] = np.sin(2*np.pi*X['dayofweek']/6)
+        X['hour_cos'] = np.cos(2*np.pi*X['hour']/23)
+        X['hour_sin'] = np.sin(2*np.pi*X['hour']/23)
+        return X.drop(columns=['dayofweek', 'hour'])
 
 def objective(trial, x_train, y_train, num_cols):
     alpha = trial.suggest_float("alpha", 1e-4, 100, log=True)
@@ -95,6 +112,7 @@ def eval_model():
     target = config['data']['target']
     model_name = mlflow_config['model_name']
     client = MlflowClient(mlflow_config["remote_server_uri"])
+    mlflow.set_tracking_uri(mlflow_config["remote_server_uri"])
     try:
         latest_ver = client.get_latest_versions(model_name)[-1].version
         current_model = mlflow.sklearn.load_model(f"models:/{model_name}/production")
