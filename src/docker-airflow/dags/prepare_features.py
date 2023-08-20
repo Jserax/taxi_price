@@ -61,7 +61,7 @@ def load_and_process_data():
                  'hour', 'dayofweek', 'avg(temp)', 'avg(clouds)', 'avg(pressure)',
                  'avg(rain)', 'avg(humidity)', 'price'])
     splits = cab.randomSplit([0.8, 0.2])
-    date = dt.datetime.now().strftime('%d/%m/%y_%H:%M')
+    date = dt.datetime.now().strftime('%d-%m-%y_%H:%M')
     train_set = f'/root/data/processed/train_{date}.csv'
     test_set = f'/root/data/processed/test_{date}.csv'
     Variable.set('last_train_set', train_set)

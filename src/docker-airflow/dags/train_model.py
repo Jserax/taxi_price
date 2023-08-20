@@ -81,7 +81,7 @@ def train_model():
     study = optuna.create_study(study_name="taxi_price", sampler=sampler,
                                 direction='maximize')
     study.optimize(lambda trial: objective(trial, x_train, y_train,
-                                           num_cols), n_trials=40)
+                                           num_cols), n_trials=30)
 
     mlflow.set_tracking_uri(mlflow_config["remote_server_uri"])
     mlflow.set_experiment(mlflow_config["experiment_name"])
