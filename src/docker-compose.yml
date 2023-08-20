@@ -1,0 +1,95 @@
+version: '3.8'
+x-airflow-common: &airflow-common
+    image: docker-airflow:latest
+    environment: &airflow-common-env
+        AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    networks: &airflow-common-net    
+        - postgres
+    volumes:
+        - ./docker-airflow:/root/airflow
+    depends_on: &airflow-common-depends-on
+        postgresql:
+            condition: service_healthy
+
+services:  
+    postgresql:
+        restart: always
+        image: postgres:13
+        container_name: postgres
+        environment:
+            - POSTGRES_DB=postgres
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+        ports:
+            - "5434:5432" 
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        networks:
+            - postgres       
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "postgres"]
+            interval: 10s
+            retries: 3
+            start_period: 5s
+
+
+    mlflow:
+        image: docker-mlflow:latest
+        container_name: mlflow
+        ports:
+            - "5000:5000"
+        command: mlflow server -w 1 --backend-store-uri postgresql://postgres:postgres@postgresql/postgres --default-artifact-root /mlartifacts --host 0.0.0.0      
+        networks:
+            - postgres 
+        depends_on:
+            postgresql:
+                condition: service_healthy
+
+
+    airflow-init:
+        <<: *airflow-common
+        command: 
+            - /bin/bash
+            - -c
+            - |
+              airflow db init
+              airflow users create -r Admin -u admin -f admin -l admin -e admin@airflow.org -p admin
+
+
+    airflow-webserver:
+        <<: *airflow-common
+        ports:
+            - '8088:8080' 
+        command: airflow webserver -w 1 
+        depends_on: 
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+    airflow-worker:
+        <<: *airflow-common
+        expose:
+            - '8793'
+        command: airflow scheduler
+        depends_on:
+            <<: *airflow-common-depends-on
+            airflow-init:
+                condition: service_completed_successfully
+
+        
+    db-init:
+        image: db-init:latest
+        container_name: db-init
+        command: python3 main.py
+        networks:
+            - postgres 
+        depends_on:
+            postgresql:
+                condition: service_healthy
+
+networks:
+  postgres:
+    driver: bridge
+volumes:
+    postgres_data:  
+    
