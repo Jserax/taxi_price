@@ -76,7 +76,7 @@ with DAG(dag_id='prepare_data',
          default_args={
             "depends_on_past": False,
             "retries": 1},
-         schedule_interval="*/10 * * * *",
+         schedule_interval=dt.timedelta(minutes=15),
          catchup=False,
          tags=["critical", "data"]) as dag:
 
